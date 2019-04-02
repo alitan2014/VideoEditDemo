@@ -98,9 +98,16 @@
 
     _captureSession = [[AVCaptureSession alloc]init];
     [_captureSession beginConfiguration];
-    [_captureSession addInput:_audioCaptureDeviceInput];
-    [_captureSession addInput:_videoCaptureDeviceInput];
-    [_captureSession addOutput:_fileOutput];
+    if ([_captureSession canAddInput:_audioCaptureDeviceInput]) {
+         [_captureSession addInput:_audioCaptureDeviceInput];
+    }
+    if ([_captureSession canAddInput:_videoCaptureDeviceInput]) {
+         [_captureSession addInput:_videoCaptureDeviceInput];
+    }
+    if ([_captureSession canAddOutput:_fileOutput]) {
+         [_captureSession addOutput:_fileOutput];
+    }
+   
     [_captureSession commitConfiguration];
     _previewLayer = [[AVCaptureVideoPreviewLayer alloc]initWithSession:_captureSession];
     _previewLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
@@ -158,13 +165,25 @@
     }
     return currentVC;
 }
+
+/**
+ 开始录制
+ */
 - (void)startRecording{
     [_captureSession startRunning];
 }
+
+/**
+ 结束录制
+ */
 - (void)stopRecording{
     [_captureSession stopRunning];
     [_fileOutput stopRecording];
 }
+
+/**
+ 切换相机
+ */
 - (void)changeCamera{
     __weak __typeof(self)wself = self;
     [_captureSession.inputs enumerateObjectsUsingBlock:^(__kindof AVCaptureInput * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
@@ -209,11 +228,18 @@
             break;
     }
 }
-#pragma mark -- RecordingDelegate --
+#pragma mark -- RecordingDelegate --  录制视频回调
 - (void)captureOutput:(AVCaptureFileOutput *)output didStartRecordingToOutputFileAtURL:(NSURL *)fileURL fromConnections:(NSArray<AVCaptureConnection *> *)connections{
-    
+    if (self.delegate && [self.delegate respondsToSelector:@selector(cl_captureOutput:didStartRecordingToOutputFileAtURL:fromConnections:)]) {
+        [self.delegate cl_captureOutput:output didStartRecordingToOutputFileAtURL:fileURL fromConnections:connections];
+        return;
+    }
 }
 - (void)captureOutput:(AVCaptureFileOutput *)output didFinishRecordingToOutputFileAtURL:(NSURL *)outputFileURL fromConnections:(NSArray<AVCaptureConnection *> *)connections error:(NSError *)error{
+    if (self.delegate && [self.delegate respondsToSelector:@selector(cl_captureOutput:didFinishRecordingToOutputFileAtURL:fromConnections:error:)]) {
+        [self.delegate cl_captureOutput:output didFinishRecordingToOutputFileAtURL:outputFileURL fromConnections:connections error:error];
+        return;
+    }
     //**获取视频时长**//
     AVURLAsset *avUrl = [AVURLAsset URLAssetWithURL:outputFileURL options:nil];
     CMTime time = [avUrl duration];
